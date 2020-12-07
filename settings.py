@@ -1,0 +1,4 @@
+from decouple import config
+
+TODOIST_CLIENT_ID = config("TODOIST_CLIENT_ID")
+TODOIST_CLIENT_SECRET = config("TODOIST_CLIENT_SECRET")

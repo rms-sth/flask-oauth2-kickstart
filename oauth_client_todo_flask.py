@@ -2,19 +2,18 @@ import json
 import os
 import uuid
 
-from decouple import config
-from flask import Flask, redirect, request, session, url_for, render_template
+from flask import Flask, redirect, render_template, request, session, url_for
 from flask.json import jsonify
 from requests_oauthlib import OAuth2Session
+
+from settings import TODOIST_CLIENT_ID, TODOIST_CLIENT_SECRET
+from todo_utils import get_resources, process_commands
 
 app = Flask(__name__)
 
 
 # This information is obtained upon registration of a new todoist OAuth
 # application here: https://todoist.com/
-
-TODOIST_CLIENT_ID = config("TODOIST_CLIENT_ID")
-TODOIST_CLIENT_SECRET = config("TODOIST_CLIENT_SECRET")
 
 redirect_uri = "http://localhost:5000"
 scope = ["task:add", "data:read", "data:read_write", "data:delete", "project:delete"]
@@ -75,14 +74,8 @@ def access_token():
 @app.route("/all-todo-resources", methods=["GET"])
 def all_todo_resources():
     """Fetching a protected resource using an OAuth 2 token."""
-    data = {
-        "token": session["oauth_token"],
-        "sync_token": "*",
-        "resource_types": '["all"]',
-    }
-    todoist = OAuth2Session(TODOIST_CLIENT_ID, token=session["oauth_token"])
-    response = todoist.post("https://api.todoist.com/sync/v8/sync", data=data).json()
-    return jsonify(response)
+    resources = get_resources(resource_types=["projects"])
+    return jsonify(resources)
 
 
 @app.route("/add-project", methods=["GET", "POST"])
@@ -91,90 +84,52 @@ def add_project():
     if request.method == "GET":
         return render_template("add_project.html")
     else:
-        project_name = request.form.get("project_name")
         commands = [
             {
                 "type": "project_add",
                 "temp_id": str(uuid.uuid4()),
                 "uuid": str(uuid.uuid4()),
-                "args": {"name": project_name},
+                "args": {"name": request.form.get("project_name")},
             }
         ]
-        data = {
-            "commands": json.dumps(commands),
-        }
-        todoist = OAuth2Session(TODOIST_CLIENT_ID, token=session["oauth_token"])
-        response = todoist.post(
-            "https://api.todoist.com/sync/v8/sync", data=data
-        ).json()
-        return jsonify(response)
+        return process_commands(commands)
 
 
 @app.route("/update-project", methods=["GET", "POST"])
 def update_project():
     """Fetching a protected resource using an OAuth 2 token."""
     if request.method == "GET":
-        data = {
-            "token": session["oauth_token"],
-            "sync_token": "*",
-            "resource_types": '["projects"]',
-        }
-        todoist = OAuth2Session(TODOIST_CLIENT_ID, token=session["oauth_token"])
-        projects = todoist.post(
-            "https://api.todoist.com/sync/v8/sync", data=data
-        ).json()
-        return render_template("update_project.html", projects=projects.get("projects"))
+        projects = get_resources(resource_types=["projects"])
+        return render_template("delete_project.html", projects=projects.get("projects"))
     else:
-        project_name = request.form.get("project_name")
-        project_id = request.form.get("project_id")
         commands = [
             {
                 "type": "project_update",
                 "uuid": str(uuid.uuid4()),
-                "args": {"id": project_id, "name": project_name},
+                "args": {
+                    "id": request.form.get("project_id"),
+                    "name": request.form.get("project_name"),
+                },
             }
         ]
-        data = {
-            "commands": json.dumps(commands),
-        }
-        todoist = OAuth2Session(TODOIST_CLIENT_ID, token=session["oauth_token"])
-        response = todoist.post(
-            "https://api.todoist.com/sync/v8/sync", data=data
-        ).json()
-        return jsonify(response)
+        return process_commands(commands)
 
 
 @app.route("/delete-project", methods=["GET", "POST"])
 def delete_project():
     """Fetching a protected resource using an OAuth 2 token."""
     if request.method == "GET":
-        data = {
-            "token": session["oauth_token"],
-            "sync_token": "*",
-            "resource_types": '["projects"]',
-        }
-        todoist = OAuth2Session(TODOIST_CLIENT_ID, token=session["oauth_token"])
-        projects = todoist.post(
-            "https://api.todoist.com/sync/v8/sync", data=data
-        ).json()
+        projects = get_resources(resource_types=["projects"])
         return render_template("delete_project.html", projects=projects.get("projects"))
     else:
-        project_id = request.form.get("project_id")
         commands = [
             {
                 "type": "project_delete",
                 "uuid": str(uuid.uuid4()),
-                "args": {"id": project_id},
+                "args": {"id": request.form.get("project_id")},
             }
         ]
-        data = {
-            "commands": json.dumps(commands),
-        }
-        todoist = OAuth2Session(TODOIST_CLIENT_ID, token=session["oauth_token"])
-        response = todoist.post(
-            "https://api.todoist.com/sync/v8/sync", data=data
-        ).json()
-        return jsonify(response)
+        return process_commands(commands)
 
 
 if __name__ == "__main__":
