@@ -78,6 +78,9 @@ def all_todo_resources():
     return jsonify(resources)
 
 
+#########################################
+# Project
+########################################
 @app.route("/add-project", methods=["GET", "POST"])
 def add_project():
     """Fetching a protected resource using an OAuth 2 token."""
@@ -127,6 +130,88 @@ def delete_project():
                 "type": "project_delete",
                 "uuid": str(uuid.uuid4()),
                 "args": {"id": request.form.get("project_id")},
+            }
+        ]
+        return process_commands(commands)
+
+
+@app.route("/archive-project", methods=["GET", "POST"])
+def archive_project():
+    """Fetching a protected resource using an OAuth 2 token."""
+    if request.method == "GET":
+        projects = get_resources(resource_types=["projects"])
+        return render_template("delete_project.html", projects=projects.get("projects"))
+    else:
+        commands = [
+            {
+                "type": "project_archive",
+                "uuid": str(uuid.uuid4()),
+                "args": {"id": request.form.get("project_id")},
+            }
+        ]
+        return process_commands(commands)
+
+
+@app.route("/unarchive-project", methods=["GET", "POST"])
+def unarchive_project():
+    """Fetching a protected resource using an OAuth 2 token."""
+    if request.method == "GET":
+        projects = get_resources(resource_types=["projects"])
+        return render_template("delete_project.html", projects=projects.get("projects"))
+    else:
+        commands = [
+            {
+                "type": "project_unarchive",
+                "uuid": str(uuid.uuid4()),
+                "args": {"id": request.form.get("project_id")},
+            }
+        ]
+        return process_commands(commands)
+
+
+@app.route("/reorder-project", methods=["GET", "POST"])
+def reorder_project():
+    """Fetching a protected resource using an OAuth 2 token."""
+    if request.method == "GET":
+        projects = get_resources(resource_types=["projects"])
+        return render_template(
+            "reorder_project.html", projects=projects.get("projects")
+        )
+    else:
+        projects = (request.form.get("project_id")).split(",")
+        order = [
+            {"id": project, "child_order": index}
+            for index, project in enumerate(projects)
+        ]
+        commands = [
+            {
+                "type": "project_reorder",
+                "uuid": str(uuid.uuid4()),
+                "args": {"projects": order},
+            }
+        ]
+        return process_commands(commands)
+
+
+#########################################
+# Item
+########################################
+@app.route("/add-item", methods=["GET", "POST"])
+def add_item():
+    """Fetching a protected resource using an OAuth 2 token."""
+    if request.method == "GET":
+        projects = get_resources(resource_types=["projects"])
+        return render_template("add_item.html", projects=projects.get("projects"))
+    else:
+        commands = [
+            {
+                "type": "item_add",
+                "temp_id": str(uuid.uuid4()),
+                "uuid": str(uuid.uuid4()),
+                "args": {
+                    "content": request.form.get("item_content"),
+                    "project_id": request.form.get("project_id"),
+                },
             }
         ]
         return process_commands(commands)

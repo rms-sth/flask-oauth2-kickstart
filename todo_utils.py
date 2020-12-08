@@ -17,7 +17,7 @@ def get_resources(resource_types: list = ["all"]):
     return resources
 
 
-def process_commands(commands: dict):
+def process_commands(commands: list):
     data = {
         "commands": json.dumps(commands),
     }
